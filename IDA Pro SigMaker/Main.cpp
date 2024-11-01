@@ -16,7 +16,11 @@ static uint32_t WildcardableOperandTypeBitmask =
     BIT( o_idpspec0 ) | BIT( o_idpspec1 ) | BIT( o_idpspec2 ) | BIT( o_idpspec3 ) | BIT( o_idpspec4 ) | BIT( o_idpspec5 );
 
 static bool IsARM( ) {
-    return std::string_view( "ARM" ) == inf.procname;
+    qstring archName;
+    if ( !getinf_str( &archName, INF_PROCNAME ) ) {
+        return false;
+    }
+    return archName == "ARM";
 }
 
 static bool GetOperandOffsetARM( const insn_t& instruction, uint8_t* operandOffset, uint8_t* operandLength ) {
@@ -94,7 +98,7 @@ static std::vector<uint8_t> ReadSegmentsToBuffer( ) {
             continue;
         }
 
-        auto ea = buffer.empty( ) ? inf.min_ea : seg->start_ea;
+        auto ea = buffer.empty( ) ? getinf(INF_MIN_EA) : seg->start_ea;
         size_t size = seg->end_ea - ea;
 
         // Resize the buffer to accommodate the segment data
@@ -144,7 +148,7 @@ static std::vector<ea_t> FindSignatureOccurencesQis( std::string_view idaSignatu
 
         auto fileOffset = ( ( currentPtr - FILE_BUFFER.data( ) ) + occurence );
 
-        results.push_back( inf.min_ea + fileOffset );
+        results.push_back( getinf(INF_MIN_EA) + fileOffset );
 
         currentPtr = FILE_BUFFER.data( ) + fileOffset + 1;
     }
@@ -159,13 +163,13 @@ static std::vector<ea_t> FindSignatureOccurences( std::string_view idaSignature,
 
     // Convert signature string to searchable struct
     compiled_binpat_vec_t binaryPattern;
-    parse_binpat_str( &binaryPattern, inf.min_ea, idaSignature.data( ), 16 );
+    parse_binpat_str( &binaryPattern, getinf( INF_MIN_EA ), idaSignature.data( ), 16 );
 
     // Search for occurences
     std::vector<ea_t> results;
-    auto ea = inf.min_ea;
+    auto ea = getinf( INF_MIN_EA );
     while( true ) {
-        auto occurence = bin_search2( ea, inf.max_ea, binaryPattern, BIN_SEARCH_NOCASE | BIN_SEARCH_FORWARD );
+        auto occurence = bin_search( ea, getinf( INF_MAX_EA ), binaryPattern, BIN_SEARCH_NOCASE | BIN_SEARCH_FORWARD );
 
         // Signature not found anymore
         if( occurence == BADADDR ) {
